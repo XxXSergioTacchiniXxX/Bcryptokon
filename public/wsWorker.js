@@ -13,76 +13,85 @@ self.onconnect = (e) => {
   connections.push(port);
 
   port.onmessage = (e) => {
-    sendToWebSocket(e.data);
+    onMessage(e.data);
   };
 
   socket.onmessage = (e) => {
     const data = JSON.parse(e.data);
 
-    connections.forEach(p => {
+    connections.forEach((p) => {
       p.postMessage(data);
-    })
+    });
   };
 };
 
-const sendToWebSocket = (message) => {
-  const messageParams = constructRequest(message);
-
+const onMessage = (message) => {
   if (socket.readyState === WebSocket.OPEN) {
-    socketSend(messageParams);
+    socketSend(message);
     return;
   }
 
   socket.addEventListener(
     "open",
     () => {
-      socketSend(messageParams);
+      socketSend(message);
     },
     { once: true }
   );
 };
 
-function socketSend(messParam) {
-  const stringifiedMessage = JSON.stringify(messParam);
+function socketSend(message) {
+  console.log(message);
 
-  if (messParam.action === "SubAdd") {
-    onAddSub(messParam);
+  if (message.action === "SubAdd") {
+    onAddSub(message);
   }
-  if (messParam.action === "SubRemove") {
-    activeSubs = activeSubs.filter(
-      (sub) => sub !== messParam.ticker + messParam.currency
-    );
 
-    socket.send(stringifiedMessage);
+  if (message.action === "SubRemove") {
+    onRemoveSub(message);
   }
 }
 
-function onAddSub(messParam) {
-  const stringifiedMessage = JSON.stringify(messParam);
+function onAddSub(message) {
+  const messageParam = constructRequest(message);
+  const stringifiedMessage = JSON.stringify(messageParam);
 
-  const activeSub = activeSubs.filter((sub) => {
-    sub.name === messParam.ticker + messParam.currency;
-  })[0];
+  const activeSub = activeSubs.find(
+    (sub) => sub.name === message.ticker + message.currency
+  );
 
   if (activeSub) {
-    activeSubs = activeSubs
-      .filter((sub) => {
-        sub !== activeSub;
-      })
-      .push({
-        name: activeSub.name,
-        subCount: activeSub.subCount + 1,
-      });
-
+    activeSub.subCount++;
     return;
   }
 
   activeSubs.push({
-    name: messParam.ticker + messParam.currency,
+    name: message.ticker + message.currency,
     subCount: 1,
   });
 
   socket.send(stringifiedMessage);
+}
+
+function onRemoveSub(message) {
+  const messageParam = constructRequest(message);
+  const stringifiedMessage = JSON.stringify(messageParam);
+
+  const activeSub = activeSubs.find((sub) => {
+    return sub.name === message.ticker + message.currency;
+  });
+
+  if (!activeSub) return;
+
+  activeSub.subCount--;
+
+  if (activeSub.subCount === 0) {
+    console.log("PRE DELETE", activeSubs);
+    activeSubs = activeSubs.filter((sub) => sub !== activeSub);
+    console.log("OUT DELETE", activeSubs);
+
+    socket.send(stringifiedMessage);
+  }
 }
 
 function constructRequest({ ticker, currency, action }) {

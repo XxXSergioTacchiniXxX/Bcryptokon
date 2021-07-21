@@ -15,7 +15,6 @@ let crossСurrency = [];
 // };
 
 function onMessage({ data: updateData }) {
-  console.log(updateData);
 
   const { TYPE: type } = updateData;
 
@@ -68,7 +67,7 @@ export const unsubToUpdatePrice = (tickerName) => {
     crossСurrency = crossСurrency.filter((currency) => currency !== tickerName);
     return;
   }
-  unsubToTickerOnWs(tickerName);
+  unsubToTickerOnWs(tickerName, "USD");
 };
 
 // subToUpdatePrice("BTC", updateBtcPrice);
