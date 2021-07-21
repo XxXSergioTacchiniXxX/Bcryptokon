@@ -264,7 +264,7 @@ export default {
     hasAddTickerError() {
       let hasError = false;
       this.tickers.forEach((ticker) => {
-        if (ticker.name === this.ticker) {
+        if (ticker.name === this.ticker.toUpperCase()) {
           hasError = true;
         }
       });

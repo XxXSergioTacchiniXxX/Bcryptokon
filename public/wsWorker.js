@@ -5,16 +5,23 @@ const socket = new WebSocket(
   `wss://streamer.cryptocompare.com/v2?api_key=${API_KEY}`
 );
 
-let activeSub = [];
+let activeSubs = [];
+const connections = [];
 
 self.onconnect = (e) => {
   const port = e.ports[0];
+  connections.push(port);
+
   port.onmessage = (e) => {
     sendToWebSocket(e.data);
   };
+
   socket.onmessage = (e) => {
     const data = JSON.parse(e.data);
-    port.postMessage(data);
+
+    connections.forEach(p => {
+      p.postMessage(data);
+    })
   };
 };
 
@@ -39,17 +46,43 @@ function socketSend(messParam) {
   const stringifiedMessage = JSON.stringify(messParam);
 
   if (messParam.action === "SubAdd") {
-    if (activeSub.includes(messParam.ticker + messParam.currency)) return;
-    activeSub.push(messParam.ticker + messParam.currency);
-    socket.send(stringifiedMessage);
+    onAddSub(messParam);
   }
   if (messParam.action === "SubRemove") {
-    activeSub = activeSub.filter(
+    activeSubs = activeSubs.filter(
       (sub) => sub !== messParam.ticker + messParam.currency
     );
 
     socket.send(stringifiedMessage);
   }
+}
+
+function onAddSub(messParam) {
+  const stringifiedMessage = JSON.stringify(messParam);
+
+  const activeSub = activeSubs.filter((sub) => {
+    sub.name === messParam.ticker + messParam.currency;
+  })[0];
+
+  if (activeSub) {
+    activeSubs = activeSubs
+      .filter((sub) => {
+        sub !== activeSub;
+      })
+      .push({
+        name: activeSub.name,
+        subCount: activeSub.subCount + 1,
+      });
+
+    return;
+  }
+
+  activeSubs.push({
+    name: messParam.ticker + messParam.currency,
+    subCount: 1,
+  });
+
+  socket.send(stringifiedMessage);
 }
 
 function constructRequest({ ticker, currency, action }) {

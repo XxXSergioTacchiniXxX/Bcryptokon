@@ -1,5 +1,4 @@
 const AGGREGATE_INDEX = "5";
-const INVALID_SUB_INDEX = "500";
 
 const worker = new SharedWorker("../wsWorker.js");
 const { port } = worker;
@@ -9,28 +8,16 @@ port.onmessage = onMessage;
 const tickersSubscribers = new Map();
 
 let crossСurrency = [];
-let btcPrice = 0;
+// let btcPrice = 0;
 
-const updateBtcPrice = (newPrice) => {
-  btcPrice = newPrice;
-};
+// const updateBtcPrice = (newPrice) => {
+//   btcPrice = newPrice;
+// };
 
 function onMessage({ data: updateData }) {
+  console.log(updateData);
+
   const { TYPE: type } = updateData;
-  if (type === INVALID_SUB_INDEX) {
-    const { PARAMETER: param } = updateData;
-    const currency = param.split("~")[2];
-
-    if (!crossСurrency.includes(currency)) {
-      crossСurrency.push(currency);
-      subToTickerOnWs(currency, "BTC");
-      return;
-    }
-
-    const heandlers = tickersSubscribers.get(currency);
-    heandlers?.forEach((fn) => fn("-", false));
-    return;
-  }
 
   if (type === AGGREGATE_INDEX) {
     let { FROMSYMBOL: currency, PRICE: newPrice } = updateData;
@@ -39,15 +26,11 @@ function onMessage({ data: updateData }) {
     }
     const heandlers = tickersSubscribers.get(currency);
 
-    if (crossСurrency.includes(currency)) {
-      newPrice = btcPrice * newPrice;
-    }
     heandlers.forEach((fn) => fn(newPrice, true));
   }
 }
 
 const sendToWorker = (message) => {
-  console.log(message);
   port.postMessage(message);
   return;
 };
@@ -88,4 +71,4 @@ export const unsubToUpdatePrice = (tickerName) => {
   unsubToTickerOnWs(tickerName);
 };
 
-subToUpdatePrice("BTC", updateBtcPrice);
+// subToUpdatePrice("BTC", updateBtcPrice);
