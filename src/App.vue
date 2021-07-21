@@ -203,7 +203,11 @@
 </template>
 
 <script>
-import { subToUpdatePrice, unsubToUpdatePrice } from "./api";
+import {
+  subToUpdatePrice,
+  unsubToUpdatePrice,
+  loadAllDataTickers,
+} from "./api";
 
 export default {
   name: "App",
@@ -235,7 +239,7 @@ export default {
       this.pageNumber = windowsData.pageNumber;
     }
 
-    await this.getAllDataTickers();
+    this.allTickerNames = await loadAllDataTickers();
     this.isLoad = false;
 
     const tickersData = localStorage.getItem("crypto-list");
@@ -262,7 +266,9 @@ export default {
     },
 
     hasAddTickerError() {
-      const hasError =  this.tickers.find((ticker) => ticker.name === this.ticker.toUpperCase());
+      const hasError = this.tickers.find(
+        (ticker) => ticker.name === this.ticker.toUpperCase()
+      );
       return !!hasError;
     },
 
@@ -349,21 +355,6 @@ export default {
     clearSelect() {
       this.selectTicker = null;
       this.graph = [];
-    },
-
-    async getAllDataTickers() {
-      const f = await fetch(
-        "https://min-api.cryptocompare.com/data/all/coinlist?summary=true"
-      );
-
-      const data = await f.json();
-      const names = [];
-
-      for (let key in data.Data) {
-        names.push(key);
-      }
-
-      this.allTickerNames = names;
     },
 
     updateHints() {

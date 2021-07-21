@@ -1,6 +1,9 @@
 const AGGREGATE_INDEX = "5";
 const INVALID_SUB_INDEX = "500";
 
+const ALL_DATA_TICKERS_URL =
+  "https://min-api.cryptocompare.com/data/all/coinlist?summary=true";
+
 const worker = new SharedWorker("../wsWorker.js");
 const { port } = worker;
 
@@ -24,7 +27,7 @@ function onMessage({ data: updateData }) {
   if (type === INVALID_SUB_INDEX && message === "INVALID_SUB") {
     const { PARAMETER: param } = updateData;
     const currency = param.split("~")[2];
-   
+
     const heandlers = tickersSubscribers.get(currency);
 
     heandlers.forEach((fn) => fn("-", false));
@@ -65,4 +68,17 @@ export const unsubToUpdatePrice = (tickerName) => {
   tickersSubscribers.delete(tickerName);
 
   unsubToTickerOnWs(tickerName, "USD");
+};
+
+export const loadAllDataTickers = async () => {
+  const f = await fetch(ALL_DATA_TICKERS_URL);
+
+  const data = await f.json();
+  const names = [];
+
+  for (let key in data.Data) {
+    names.push(key);
+  }
+
+  return names;
 };
