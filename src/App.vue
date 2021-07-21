@@ -262,13 +262,8 @@ export default {
     },
 
     hasAddTickerError() {
-      let hasError = false;
-      this.tickers.forEach((ticker) => {
-        if (ticker.name === this.ticker.toUpperCase()) {
-          hasError = true;
-        }
-      });
-      return hasError;
+      const hasError =  this.tickers.find((ticker) => ticker.name === this.ticker.toUpperCase());
+      return !!hasError;
     },
 
     slicedTickers() {
@@ -301,7 +296,6 @@ export default {
 
   methods: {
     updateTicker(tickerName, newPrice, isCorrect) {
-
       this.tickers
         .filter((t) => t.name === tickerName)
         .forEach((t) => {
@@ -319,7 +313,7 @@ export default {
 
       return price > 1 ? price.toFixed(2) : price.toPrecision(2);
     },
-    
+
     add() {
       if (this.hasAddTickerError) return;
 
