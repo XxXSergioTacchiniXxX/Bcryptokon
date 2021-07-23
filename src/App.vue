@@ -160,12 +160,16 @@
         <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
           {{ selectTicker.name }} - USD
         </h3>
-        <div class="flex items-end border-gray-600 border-b border-l h-64">
+        <div
+          class="flex items-end border-gray-600 border-b border-l h-64"
+          ref="graph"
+        >
           <div
             v-for="(bar, i) of normalizedGraph"
             :style="{
               height: `${bar}%`,
             }"
+            ref="graphBar"
             :key="i"
             class="bg-purple-800 border w-10 "
           ></div>
@@ -224,6 +228,7 @@ export default {
       isLoad: true,
       allTickerNames: [],
       hints: [],
+      maxGraphSize: 1,
     };
   },
   async created() {
@@ -255,7 +260,19 @@ export default {
     this.tickers = loadedTickers;
   },
 
+  mounted() {
+    window.addEventListener("resize", this.calculateMaxGraphSize);
+  },
+
+  beforeUnmount() {
+    window.removeEventListener("resize", this.calculateMaxGraphSize);
+  },
+
   computed: {
+    graphBarWidth() {
+      return  this.$refs.graphBar.clientWidth;
+    },
+
     normalizedGraph() {
       const maxValue = Math.max(...this.graph);
       const minValue = Math.min(...this.graph);
@@ -301,6 +318,15 @@ export default {
   },
 
   methods: {
+    calculateMaxGraphSize() {
+      if (!this.selectTicker) {
+        return;
+      }
+
+      console.log(this.$refs.graph.clientWidth,  this.graphBarWidth);
+     this.maxGraphSize = this.$refs.graph.clientWidth / this.graphBarWidth;
+    },
+
     updateTicker(tickerName, newPrice, isCorrect) {
       this.tickers
         .filter((t) => t.name === tickerName)
@@ -310,8 +336,13 @@ export default {
 
           if (this.selectTicker?.name === tickerName) {
             this.graph.push(newPrice);
+            this.$nextTick().then(this.calculateMaxGraphSize);
+            if(this.graph.length > this.maxGraphSize) {
+              this.graph = this.graph.splice(1, this.maxGraphSize);
+            }
           }
         });
+
     },
 
     formatPrice(price) {
@@ -342,6 +373,7 @@ export default {
       this.tickers = this.tickers.filter((item) => item !== deleteTickers);
       this.clearSelect();
     },
+
     select(newSelectTicker) {
       this.selectTicker = newSelectTicker;
     },
@@ -373,6 +405,7 @@ export default {
       localStorage.setItem("crypto-list", JSON.stringify(this.tickers));
     },
   },
+
   watch: {
     slicedTickers() {
       if (this.slicedTickers.length === 0 && this.pageNumber > 1) {

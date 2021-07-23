@@ -11,6 +11,14 @@ port.onmessage = onMessage;
 
 const tickersSubscribers = new Map();
 
+const crossCurrencies = [];
+
+let btcPrice = 0;
+
+function updatePriceBTC(newPrice) {
+  btcPrice = newPrice;
+}
+
 function onMessage({ data: updateData }) {
   const { TYPE: type, MESSAGE: message } = updateData;
 
@@ -21,12 +29,22 @@ function onMessage({ data: updateData }) {
     }
     const heandlers = tickersSubscribers.get(currency);
 
+    if (crossCurrencies.find((cur) => cur === currency)) {
+      newPrice = newPrice * btcPrice;
+    }
+
     heandlers.forEach((fn) => fn(newPrice, true));
   }
 
   if (type === INVALID_SUB_INDEX && message === "INVALID_SUB") {
     const { PARAMETER: param } = updateData;
     const currency = param.split("~")[2];
+
+    if (!crossCurrencies.find((cur) => cur === currency)) {
+      crossCurrencies.push(currency);
+      subToTickerOnWs(currency, "BTC");
+      return;
+    }
 
     const heandlers = tickersSubscribers.get(currency);
 
@@ -58,7 +76,9 @@ function unsubToTickerOnWs(ticker, currency) {
 export const subToUpdatePrice = (tickerName, cb) => {
   const subscribers = tickersSubscribers.get(tickerName) || [];
   tickersSubscribers.set(tickerName, [...subscribers, cb]);
+
   if (subscribers.length) return;
+
   subToTickerOnWs(tickerName, "USD");
 };
 
@@ -66,6 +86,11 @@ export const unsubToUpdatePrice = (tickerName) => {
   if (tickerName === "BTC") return;
 
   tickersSubscribers.delete(tickerName);
+
+  if (crossCurrencies.find((cur) => cur === tickerName)) {
+    unsubToTickerOnWs(tickerName, "BTC");
+    return;
+  }
 
   unsubToTickerOnWs(tickerName, "USD");
 };
@@ -82,3 +107,5 @@ export const loadAllDataTickers = async () => {
 
   return names;
 };
+
+subToUpdatePrice("BTC", updatePriceBTC);

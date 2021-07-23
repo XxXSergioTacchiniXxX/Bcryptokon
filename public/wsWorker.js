@@ -41,8 +41,6 @@ const onMessage = (message) => {
 };
 
 function socketSend(message) {
-  console.log(message);
-
   if (message.action === "SubAdd") {
     onAddSub(message);
   }
@@ -62,6 +60,7 @@ function onAddSub(message) {
 
   if (activeSub) {
     activeSub.subCount++;
+    socket.send(stringifiedMessage);
     return;
   }
 
@@ -86,10 +85,7 @@ function onRemoveSub(message) {
   activeSub.subCount--;
 
   if (activeSub.subCount === 0) {
-    console.log("PRE DELETE", activeSubs);
     activeSubs = activeSubs.filter((sub) => sub !== activeSub);
-    console.log("OUT DELETE", activeSubs);
-
     socket.send(stringifiedMessage);
   }
 }
