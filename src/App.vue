@@ -26,63 +26,9 @@
   </div>
   <div class="container mx-auto flex flex-col items-center bg-gray-100 p-4">
     <div class="container">
-      <section class="mb-3">
-        <div class="flex">
-          <div class="max-w-xs">
-            <label for="wallet" class="block text-sm font-medium text-gray-700"
-              >Тикер</label
-            >
-            <div class="mt-1 relative rounded-md shadow-md">
-              <input
-                v-model="ticker"
-                @keydown.enter="add"
-                type="text"
-                name="wallet"
-                id="wallet"
-                class="block w-full pr-10 border-gray-300 text-gray-900 focus:outline-none p-2 focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md"
-                placeholder="Например DOGE"
-              />
-            </div>
-            <div
-              v-if="hints.length"
-              class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap mt-2 mb-2"
-            >
-              <span
-                v-for="hint of hints"
-                @click="selectHint(hint)"
-                :key="hint"
-                class="inline-flex items-center px-2 m-1 rounded-md text-xs font-medium bg-gray-300 text-gray-800 cursor-pointer"
-              >
-                {{ hint }}
-              </span>
-            </div>
-            <div v-if="hasAddTickerError" class="text-sm text-red-600">
-              Такой тикер уже добавлен
-            </div>
-          </div>
-        </div>
-        <button
-          @click="add"
-          type="button"
-          class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-        >
-          <!-- Heroicon name: solid/mail -->
-          <svg
-            class="-ml-0.5 mr-2 h-6 w-6"
-            xmlns="http://www.w3.org/2000/svg"
-            width="30"
-            height="30"
-            viewBox="0 0 24 24"
-            fill="#ffffff"
-          >
-            <path
-              d="M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7zm-1-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
-            ></path>
-          </svg>
-          Добавить
-        </button>
-      </section>
       <hr class="w-full border-t border-gray-600 my-4" />
+
+      <add-ticker @add-ticker="add" :allTickerNames="allTickerNames" :activeTickers="tickers"/>
 
       <section>
         <label>
@@ -207,6 +153,8 @@
 </template>
 
 <script>
+import AddTicker from "./components/AddTicker.vue";
+
 import {
   subToUpdatePrice,
   unsubToUpdatePrice,
@@ -214,6 +162,10 @@ import {
 } from "./api";
 
 export default {
+  components: {
+    AddTicker,
+  },
+
   name: "App",
   data() {
     return {
@@ -227,7 +179,6 @@ export default {
       graph: [],
       isLoad: true,
       allTickerNames: [],
-      hints: [],
       maxGraphSize: 1,
     };
   },
@@ -270,7 +221,7 @@ export default {
 
   computed: {
     graphBarWidth() {
-      return  this.$refs.graphBar.clientWidth;
+      return this.$refs.graphBar.clientWidth;
     },
 
     normalizedGraph() {
@@ -280,13 +231,6 @@ export default {
       return this.graph.map(
         (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue + 1)
       );
-    },
-
-    hasAddTickerError() {
-      const hasError = this.tickers.find(
-        (ticker) => ticker.name === this.ticker.toUpperCase()
-      );
-      return !!hasError;
     },
 
     slicedTickers() {
@@ -323,8 +267,7 @@ export default {
         return;
       }
 
-      console.log(this.$refs.graph.clientWidth,  this.graphBarWidth);
-     this.maxGraphSize = this.$refs.graph.clientWidth / this.graphBarWidth;
+      this.maxGraphSize = this.$refs.graph.clientWidth / this.graphBarWidth;
     },
 
     updateTicker(tickerName, newPrice, isCorrect) {
@@ -337,12 +280,11 @@ export default {
           if (this.selectTicker?.name === tickerName) {
             this.graph.push(newPrice);
             this.$nextTick().then(this.calculateMaxGraphSize);
-            if(this.graph.length > this.maxGraphSize) {
+            if (this.graph.length > this.maxGraphSize) {
               this.graph = this.graph.splice(1, this.maxGraphSize);
             }
           }
         });
-
     },
 
     formatPrice(price) {
@@ -351,17 +293,15 @@ export default {
       return price > 1 ? price.toFixed(2) : price.toPrecision(2);
     },
 
-    add() {
-      if (this.hasAddTickerError) return;
+    add(ticker) {
 
       const newTicker = {
-        name: this.ticker.toUpperCase(),
+        name: ticker.toUpperCase(),
         price: "-",
         isCorrect: true,
       };
 
       this.tickers = [...this.tickers, newTicker];
-      this.ticker = "";
 
       subToUpdatePrice(newTicker.name, (price, isCorrect) => {
         this.updateTicker(newTicker.name, price, isCorrect);
@@ -378,28 +318,11 @@ export default {
       this.selectTicker = newSelectTicker;
     },
 
-    selectHint(tickerName) {
-      this.isAddTickerError = false;
-      this.ticker = tickerName;
-      this.add();
-    },
-
     clearSelect() {
       this.selectTicker = null;
       this.graph = [];
     },
 
-    updateHints() {
-      if (!this.ticker) {
-        this.hints = [];
-        return;
-      }
-
-      const matchs = this.allTickerNames.filter((name) =>
-        name.includes(this.ticker.toUpperCase())
-      );
-      this.hints = matchs.slice(0, 4);
-    },
 
     updateLocalStorage() {
       localStorage.setItem("crypto-list", JSON.stringify(this.tickers));
@@ -415,9 +338,6 @@ export default {
 
     selectTicker() {
       this.graph = [];
-    },
-    ticker() {
-      this.updateHints();
     },
     tickers() {
       this.updateLocalStorage();
